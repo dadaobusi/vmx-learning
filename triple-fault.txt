@@ -1,3 +1,98 @@
 
 
 https://en.wikipedia.org/wiki/Triple_fault
+
+Double Fault & Triple Fault
+百度快照
+http://cache.baiducontent.com/c?m=9d78d513d98501f41ab3c3690d6783355e0ac6777b978e1a2592d50a8465285c5a23a6fe3022675a8499252c16af3e07b6a46b6f644371edc08cdf0bc0bb902b2f9525326d1f804419&p=9964c54addc45ae60be2963c164e&newp=8b2a97538c9807e534bd9b750a0a92695d0fc20e3cd5d201298ffe0cc4241a1a1a3aecbf20261207d8cf7d6602a9495be0fa36703d0034f1f689df08d2ecce7e39d27c723a70&user=baidu&fm=sc&query=triple+fault&qid=a76a4c880005eb3a&p1=1
+
+Double Fault & Triple Fault
+2012年4月7日lenky发表评论阅读评论7,660 次浏览
+之前我曾提到过intel x86 cpu的14号中断用于处理缺页异常，这也是被人熟知的一个中断号，事实上intel架构总共可用的中断号有256个（从0到255），其中前32个（从0到31）中断号保留给Intel架构内部使用，也就是说这些中断都有其特定的含义而不可被用户更改，而剩余的224（从32到255）个中断则可由用户自定义和实现其具体功能。本文重点关注前32个中断，更具体点说是其中的一个中断Double Fault，以及隐包含的另外一个中断Triple Fault。
+
+前32个中断，每个中断的含义都可以在intel手册“Intel 64 and IA-32 Architectures Software Developer’s Manual Volume 3A System Programming Guide.pdf”上找到对应的描述（Table 6-1. Protected-Mode Exceptions and Interrupts ），这里不再过多解释其它中断，重点看一下8号Double Fault中断。
+Double Fault从字面上来讲，就是前后的动作连续触发两个中断的异常，比如一个缺页异常没有对应的异常中断处理函数（用c代码表示即为NULL，空指针），这就将会引发一个典型的Double Fault，在这种情况下，如果发生缺页异常则将触发一个中断，此时cpu要去调用缺页异常中断处理函数进行处理，但却发现没有这个处理函数，因而这又是一个异常而再次触发中断，此时触发的就是Double Fault异常中断。但是，值得注意的是并不是连续发生两个中断就是Double Fault，因为部分情况下，连续发生的两个中断可以依次被cpu处理。为了辨别什么情况下才会触发Double Fault，Intel cpu把32个中断分为3类：
+Table 6-4. Interrupt and Exception Classes
+
+Class	Vector Number	Description
+Benign
+Exceptions
+and
+Interrupts	1 
+2 
+3 
+4 
+5 
+6 
+7 
+9 
+16 
+17 
+18 
+19 
+All 
+All 	Debug
+NMI Interrupt
+Breakpoint
+Overflow
+BOUND Range Exceeded
+Invalid Opcode
+Device Not Available
+Coprocessor Segment Overrun
+Floating-Point Error
+Alignment Check
+Machine Check
+SIMD floating-point
+INT n
+INTR
+Contributory
+Exceptions	0 
+10 
+11 
+12 
+13 	Divide Error
+Invalid TSS
+Segment Not Present
+Stack Fault
+General Protection
+Page Faults	14 	Page Fault
+而下表显示了会导致发生Double Fault的情况，即如果先发生某类型的异常，接着再发生某类型的异常，此时是否会导致发生Double Fault异常：
+Table 6-5. Conditions for Generating a Double Fault
+
+First Exception	Second Exception
+Benign	Contributory	Page Fault
+Benign	x	x	x
+Contributory	x	Double Fault	x
+Page Fault	x	Double Fault	Double Fault
+看看前面举的示例，先发生Page Fault，接着发生Contributory Exception（执行NULL空函数为Segment Not Present，11号中断），对应下表的确将引发Double Fault。事实上，这个示例有点特殊，其实不管前一个异常是Benign也好，Contributory也好，Page Fault也好，只要对应的中断函数为空，此时都会触发Double Fault，对应intel手册里的话为：“Any further faults generated while the processor is attempting to transfer control to the appropriate fault handler could still lead to a double-fault sequence.”
+Double Fault不可恢复，所以在该中断的处理函数里能做的也只能是收集相关信息（以便进行Double Fault问题原因排查），主动关闭相关程序和服务（如果可以的话），让机器‘死’得优雅一点。
+如果Double Fault异常中断的函数也为空，那么此时将发生Triple Fault异常，该异常并不是一个真正的异常，它没有对应中断号，也表示如果发生了Triple Fault异常这种情况，cpu都不管了，除了重启机器别无他法（一般外部硬件，比如主板会向cpu发出重启信号）。
+触发Triple Fault的情况大部分是因为LDT或者GDT或IDT错误导致（被无意中踩坏？）或者内核栈溢出（或下溢），比如内核栈溢出，栈顶指针刚好达到一个无效内存页（即访问页不在内存中）而触发Page Fault中断，进而调用Page Fault异常中断函数进行处理，函数调用需要进行异常信息压栈（以传递给中断函数），但栈内存页不存在内存中，这又触发Page Fault异常，如此反复进而触发Double Fault、Triple Fault。
+遇到Triple Fault怎么弄？额，我不知道，不过Linus给出了明确的答复，但那是03年的事情：
+http://yarchive.net/comp/linux/triple_faults.html
+
+Newsgroups: fa.linux.kernel
+From: Linus Torvalds <torvalds@osdl.org>
+Subject: Re: 2.6.0-test9-mm3
+Original-Message-ID: <Pine.LNX.4.44.0311141344290.5877-100000@home.osdl.org>
+Date: Fri, 14 Nov 2003 21:48:59 GMT
+Message-ID: <fa.jjta19r.1gl80h1@ifi.uio.no>
+
+On Fri, 14 Nov 2003, Martin J. Bligh wrote:
+>
+> Linus had some debug thing for triple faults, a few months ago, IIRC ...
+> probably in the archives somewhere ...
+
+Triple faults you can't debug, they raise a line outside the CPU, and
+normal PC hardware will cause that to just trigger a reboot.
+
+But double faults do get caught, and that debugging stuff actually is in
+the standard kernel. It won't give _nearly_ as good a debug report as a
+"normal" oops, since I didn't want the double-fault handler to touch
+anything even remotely unsafe, but it often gives a good hint about what
+might be wrong. Certainly better than triple-faulting did (which we still
+do for _catastrophic_ corruption, eg totally munged kernel page tables etc
+- it's just very hard to avoid once you get corrupted enough).
+
+		Linus
+转载请保留地址：http://www.lenky.info/archives/2012/04/1479 或 http://lenky.info/?p=1479
