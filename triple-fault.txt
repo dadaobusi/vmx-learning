@@ -14,30 +14,27 @@ Double Fault & Triple Fault
 Double Fault从字面上来讲，就是前后的动作连续触发两个中断的异常，比如一个缺页异常没有对应的异常中断处理函数（用c代码表示即为NULL，空指针），这就将会引发一个典型的Double Fault，在这种情况下，如果发生缺页异常则将触发一个中断，此时cpu要去调用缺页异常中断处理函数进行处理，但却发现没有这个处理函数，因而这又是一个异常而再次触发中断，此时触发的就是Double Fault异常中断。但是，值得注意的是并不是连续发生两个中断就是Double Fault，因为部分情况下，连续发生的两个中断可以依次被cpu处理。为了辨别什么情况下才会触发Double Fault，Intel cpu把32个中断分为3类：
 Table 6-4. Interrupt and Exception Classes
 
-Class	Vector Number	Description
-Benign
-Exceptions
-and
-Interrupts	1 
-2 
-3 
-4 
-5 
-6 
-7 
-9 
-16 
-17 
-18 
-19 
-All 
-All 	Debug
-NMI Interrupt
-Breakpoint
-Overflow
-BOUND Range Exceeded
-Invalid Opcode
-Device Not Available
+Class       	Vector Number	Description
+Benign           1                 Debug
+Exceptions       2                NMI Interrupt
+and              3                Breakpoint
+Interrupts	 4                Overflow
+		5 		BOUND Range Exceeded
+		6 		Invalid Opcode
+		7 		Device Not Available
+		9 
+		16 
+		17 
+		18 
+		19 
+		All 
+		All 	
+
+
+
+
+
+
 Coprocessor Segment Overrun
 Floating-Point Error
 Alignment Check
