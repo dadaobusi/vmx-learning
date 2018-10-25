@@ -1,13 +1,3 @@
-//
-
-#include "stdafx.h"
-#include "stdio.h"
-/*
-4
-2
-590 580 570 560
-580 560
-*/
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//printf("hello");
@@ -23,27 +13,27 @@ int _tmain(int argc, _TCHAR* argv[])
 	for(i=1;i<=h;i++)
 	{
 		low=1;high=n;mid=(low+high)/2;
-		for(l=1;l<=n;l++)
+		while(a[mid]!=t[i])
 		{
-			while(a[mid]!=t[i])
-			{
-				if(a[mid]>t[i])				{
-					low=mid+1;mid=(low+high)/2;
-				if(a[mid]<t[i])
-					high=mid-1;mid=(low+high)/2;
-			}
-			if(a[mid]!=t[i])
-				printf("fail");
+			if(a[mid]>t[i])				
+				low=mid+1;mid=(low+high)/2;
+			if(a[mid]<t[i])
+				high=mid-1;mid=(low+high)/2;
+			if(high==low)
+				break;
 		}
-        count = 0;
-		for(j=1;j<=n;j++)
-    		if(t[i]==a[j])
-		    	count++;
-
-        printf("%d %d %d",mid,count,mid-1);
+		if(a[mid]!=t[i])
+			printf("fail");
+		else 
+		{
+			count = 0;
+			for(j=1;j<=n;j++)
+				if(t[i]==a[j])  	count++;
+			printf("%d %d %d",mid,count,mid-1);
+		}
+        
 		printf("\n");
 	}
-	//getchar();
+	getchar();
 	return 0;
 }
-
